@@ -47,4 +47,20 @@ impl DB for SQLite {
         assert!(state == State::Done);
         Ok(())
     }
+
+    fn read(&self, table: &str, key: &str) -> Result<()> {
+        // TODO: cache prepared statement
+        let mut sql = SqlBuilder::select_from(table);
+        sql.field("*");
+        // TODO: fields
+        sql.and_where(format!("{} = :{}", PRIMARY_KEY, PRIMARY_KEY));
+        let sql = sql.sql()?;
+        let mut stmt = self.conn.as_ref().unwrap().prepare(sql)?;
+        let marker = format!(":{}", PRIMARY_KEY);
+        stmt.bind_by_name(&marker, key)?;
+        let state = stmt.next()?;
+        assert!(state == State::Row);
+        // TODO: results
+        Ok(())
+    }
 }

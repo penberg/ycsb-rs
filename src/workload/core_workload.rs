@@ -38,7 +38,7 @@ pub struct CoreWorkload {
     data_integrity: bool,
     key_sequence: Box<dyn Generator<u64>>,
     operation_chooser: DiscreteGenerator<CoreOperation>,
-    //key_chooser: Box<dyn Generator<String>>,
+    key_chooser: Box<dyn Generator<u64>>,
     //field_chooser: Box<dyn Generator<String>>,
     transaction_insert_key_sequence: AcknowledgedCounterGenerator,
     //scan_length: Box<dyn Generator<u64>>,
@@ -67,9 +67,9 @@ impl CoreWorkload {
             read_all_fields: true,
             write_all_fields: true,
             data_integrity: true,
-            key_sequence: Box::new(CounterGenerator::new(1)),
+            key_sequence: Box::new(CounterGenerator::new(prop.insert_start)),
             operation_chooser: create_operation_generator(prop),
-            //key_chooser: Box<dyn Generator<String>>,
+            key_chooser: get_key_chooser_generator(prop),
             //field_chooser: Box<dyn Generator<String>>,
             transaction_insert_key_sequence: AcknowledgedCounterGenerator::new(1),
             //scan_length: Box<dyn Generator<u64>>,
@@ -79,6 +79,20 @@ impl CoreWorkload {
             insertion_retry_limit: 0,
             insertion_retry_interval: 0,
         }
+    }
+
+    fn do_transaction_read(&mut self, db: &impl DB) {
+        let keynum = self.next_key_num();
+        let dbkey = format!("{}", fnvhash64(keynum));
+        // TODO: fields
+        db.read(&self.table, &dbkey).unwrap();
+        // TODO: verify rows
+    }
+
+    fn next_key_num(&mut self) -> u64 {
+        // FIXME: Handle case where keychooser is an ExponentialGenerator.
+        // FIXME: Handle case where keynum is > transactioninsertkeysequence's last value
+        self.key_chooser.next_value(&mut self.rng)
     }
 }
 
@@ -95,8 +109,14 @@ impl Workload for CoreWorkload {
         db.insert(&self.table, &dbkey, &values).unwrap();
     }
 
-    fn do_transaction(&self, db: &impl DB) {
-        todo!("transaction");
+    fn do_transaction(&mut self, db: &impl DB) {
+        let op = self.operation_chooser.next_value(&mut self.rng);
+        match op {
+            CoreOperation::Read => {
+                self.do_transaction_read(db);
+            }
+            _ => todo!(),
+        }
     }
 }
 
@@ -124,6 +144,22 @@ fn get_field_length_generator(prop: &Properties) -> Box<dyn Generator<u64>> {
             "unknown field length distribution {}",
             prop.field_length_distribution
         ),
+    }
+}
+
+fn get_key_chooser_generator(prop: &Properties) -> Box<dyn Generator<u64>> {
+    let insert_count = if prop.insert_count > 1 {
+        prop.insert_count
+    } else {
+        prop.record_count - prop.insert_start
+    };
+    assert!(insert_count > 1);
+    match prop.request_distribution.to_lowercase().as_str() {
+        "uniform" => Box::new(UniformLongGenerator::new(
+            prop.insert_start,
+            prop.insert_start + insert_count - 1,
+        )),
+        _ => todo!(),
     }
 }
 

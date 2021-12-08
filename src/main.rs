@@ -47,6 +47,11 @@ fn main() -> Result<()> {
                     wl.do_insert(&db);
                 }
             }
+            "run" => {
+                for _ in 0..props.operation_count {
+                    wl.do_transaction(&db);
+                }
+            }
             cmd => bail!("invalid command: {}", cmd),
         }
     }

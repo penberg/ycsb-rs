@@ -12,6 +12,10 @@ fn field_length_distribution_default() -> String {
     "constant".to_string()
 }
 
+fn request_distribution_default() -> String {
+    "uniform".to_string()
+}
+
 fn field_length_default() -> u64 {
     100
 }
@@ -44,7 +48,7 @@ pub struct Properties {
     pub insert_count: u64,
     #[serde(rename = "operationcount")]
     pub operation_count: u64,
-    #[serde(default = "zero_u64", rename = "record_count")]
+    #[serde(default = "zero_u64", rename = "recordcount")]
     pub record_count: u64,
     #[serde(default = "thread_count_default", rename = "threacount")]
     pub thread_count: u64,
@@ -58,6 +62,11 @@ pub struct Properties {
         rename = "fieldlengthdistribution"
     )]
     pub field_length_distribution: String,
+    #[serde(
+        default = "request_distribution_default",
+        rename = "requestdistribution"
+    )]
+    pub request_distribution: String,
     #[serde(default = "field_length_default", rename = "fieldlength")]
     pub field_length: u64,
 
