@@ -1,9 +1,12 @@
+use std::fs;
 use anyhow::Result;
+use properties::Properties;
 use std::collections::HashMap;
 use structopt::StructOpt;
 use workload::Workload;
 
 pub mod db;
+pub mod properties;
 pub mod sqlite;
 pub mod workload;
 
@@ -18,6 +21,10 @@ struct Opt {
 
 fn main() -> Result<()> {
     let opt = Opt::from_args();
+
+    let raw_props = fs::read_to_string("workloads/workloada.toml")?;
+
+    let props: Properties = toml::from_str(&raw_props)?;
 
     let mut db = db::create_db(&opt.database)?;
 

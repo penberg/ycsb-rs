@@ -6,6 +6,8 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
+serde = { version = "1.0.130", features = ["derive"] }
 sql-builder = "3.1"
 sqlite = "0.26.0"
 structopt = "0.3.23"
+toml = "0.5.8"
