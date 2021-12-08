@@ -9,6 +9,7 @@ pub mod db;
 pub mod properties;
 pub mod sqlite;
 pub mod workload;
+pub mod generator;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "ycbs")]
