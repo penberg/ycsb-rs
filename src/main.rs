@@ -3,7 +3,7 @@ use anyhow::Result;
 use properties::Properties;
 use std::collections::HashMap;
 use structopt::StructOpt;
-use workload::Workload;
+use workload::CoreWorkload;
 
 pub mod db;
 pub mod properties;
@@ -28,8 +28,6 @@ fn main() -> Result<()> {
     let props: Properties = toml::from_str(&raw_props)?;
 
     let mut db = db::create_db(&opt.database)?;
-
-    let _wl = Workload {};
 
     db.init()?;
 

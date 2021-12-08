@@ -1,9 +1,10 @@
-pub enum Operation {
-    Insert,
-    Delete,
-    Read,
-    Scan,
-    Update,
-}
+mod core_workload;
 
-pub struct Workload {}
+pub use core_workload::CoreWorkload;
+
+use crate::db::DB;
+
+pub trait Workload {
+    fn do_insert(&self, db: &impl DB);
+    fn do_transaction(&self, db: &impl DB);
+}
