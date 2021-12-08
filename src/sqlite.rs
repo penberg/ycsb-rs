@@ -23,7 +23,7 @@ impl DB for SQLite {
         Ok(())
     }
 
-    fn insert(&self, table: &str, key: &str, values: &HashMap<&str, &str>) -> Result<()> {
+    fn insert(&self, table: &str, key: &str, values: &HashMap<&str, String>) -> Result<()> {
         // TODO: cache prepared statement
         let mut sql = SqlBuilder::insert_into(table);
         let mut vals: Vec<String> = Vec::new();
@@ -41,7 +41,7 @@ impl DB for SQLite {
         stmt.bind_by_name(&marker, key)?;
         for (key, value) in values {
             let marker = format!(":{}", key);
-            stmt.bind_by_name(&marker, *value)?;
+            stmt.bind_by_name(&marker, &value[..])?;
         }
         let state = stmt.next()?;
         assert!(state == State::Done);

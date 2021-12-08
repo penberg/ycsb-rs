@@ -1,15 +1,16 @@
-use std::fs;
+use crate::db::DB;
+use crate::workload::Workload;
 use anyhow::Result;
 use properties::Properties;
-use std::collections::HashMap;
+use std::fs;
 use structopt::StructOpt;
 use workload::CoreWorkload;
 
 pub mod db;
+pub mod generator;
 pub mod properties;
 pub mod sqlite;
 pub mod workload;
-pub mod generator;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "ycbs")]
@@ -27,15 +28,15 @@ fn main() -> Result<()> {
 
     let props: Properties = toml::from_str(&raw_props)?;
 
+    let mut wl = CoreWorkload::new(&props);
+
     let mut db = db::create_db(&opt.database)?;
 
     db.init()?;
 
-    let mut fields = HashMap::new();
-    fields.insert("field0", "bar");
-    fields.insert("field1", "baz");
-    fields.insert("field2", "zyzzy");
-    db.insert("usertable", "foo", &fields)?;
+    for _ in 0..props.operation_count {
+        wl.do_insert(&db);
+    }
 
     Ok(())
 }
