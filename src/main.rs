@@ -19,12 +19,14 @@ struct Opt {
     commands: Vec<String>,
     #[structopt(short, long)]
     database: String,
+    #[structopt(short, long)]
+    workload: String,
 }
 
 fn main() -> Result<()> {
     let opt = Opt::from_args();
 
-    let raw_props = fs::read_to_string("workloads/workloada.toml")?;
+    let raw_props = fs::read_to_string(&opt.workload)?;
 
     let props: Properties = toml::from_str(&raw_props)?;
 
