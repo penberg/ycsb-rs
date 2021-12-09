@@ -18,10 +18,11 @@ jobs:
       - name: Install rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
           components: rustfmt, clippy
       - name: Format Check
         run: cargo fmt --all -- --check
+      - name: Clippy Check
+        run: cargo clippy --all-targets --all-features -- -D warnings
       - name: Build
         run: cargo build --verbose
       - name: Run Tests
