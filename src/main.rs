@@ -3,6 +3,7 @@ use crate::workload::Workload;
 use anyhow::{bail, Result};
 use properties::Properties;
 use std::fs;
+use std::time::{Duration, Instant};
 use structopt::StructOpt;
 use workload::CoreWorkload;
 
@@ -23,6 +24,18 @@ struct Opt {
     workload: String,
 }
 
+fn load(props: &Properties, wl: &mut CoreWorkload, db: &impl DB) {
+    for _ in 0..props.operation_count {
+        wl.do_insert(db);
+    }
+}
+
+fn run(props: &Properties, wl: &mut CoreWorkload, db: &impl DB) {
+    for _ in 0..props.operation_count {
+        wl.do_transaction(db);
+    }
+}
+
 fn main() -> Result<()> {
     let opt = Opt::from_args();
 
@@ -41,19 +54,17 @@ fn main() -> Result<()> {
     }
 
     for cmd in opt.commands {
-        match &cmd[..] {
-            "load" => {
-                for _ in 0..props.operation_count {
-                    wl.do_insert(&db);
-                }
-            }
-            "run" => {
-                for _ in 0..props.operation_count {
-                    wl.do_transaction(&db);
-                }
-            }
+        let f = match &cmd[..] {
+            "load" => load,
+            "run" => run,
             cmd => bail!("invalid command: {}", cmd),
-        }
+        };
+        let start = Instant::now();
+        f(&props, &mut wl, &db);
+        let runtime = start.elapsed().as_millis();
+        println!("[OVERALL], RunTime(ms), {}", runtime);
+        let throughput = props.operation_count as f64 / (runtime as f64 / 1000.0);
+        println!("[OVERALL], Throughput(ops/sec), {}", throughput);
     }
 
     Ok(())
