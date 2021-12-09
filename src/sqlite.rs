@@ -20,7 +20,7 @@ impl SQLite {
 
 impl DB for SQLite {
     fn init(&mut self) -> Result<()> {
-        self.conn = Some(sqlite::open("file:test.db")?);
+        self.conn = Some(sqlite::open("test.db")?);
         Ok(())
     }
 
