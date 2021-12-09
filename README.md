@@ -1,4 +1,4 @@
-# YCBS for Rust
+# YCSB for Rust
 
 This is a port of [YCSB](https://github.com/brianfrankcooper/YCSB) to Rust.
 

@@ -16,7 +16,7 @@ pub mod sqlite;
 pub mod workload;
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "ycbs")]
+#[structopt(name = "ycsb")]
 struct Opt {
     #[structopt(name = "COMMANDS")]
     commands: Vec<String>,
