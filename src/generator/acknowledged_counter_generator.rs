@@ -1,4 +1,4 @@
-use super::{CounterGenerator, Generator, NumberGenerator};
+use super::{CounterGenerator, Generator};
 use rand::prelude::*;
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, Ordering},

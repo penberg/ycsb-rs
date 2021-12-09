@@ -1,9 +1,9 @@
 use super::{Generator, NumberGenerator};
-use log::warn;
 use rand::prelude::*;
 
 pub const ZIPFIAN_CONSTANT: f64 = 0.99;
 
+#[allow(dead_code)]
 struct ZipfianParameters {
     alpha: f64,
     zetan: f64,
@@ -12,6 +12,7 @@ struct ZipfianParameters {
     zeta2theta: f64,
 }
 
+#[allow(dead_code)]
 pub struct ZipfianGenerator {
     items: u64,
     base: u64,

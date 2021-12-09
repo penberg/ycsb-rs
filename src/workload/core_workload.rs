@@ -1,6 +1,5 @@
 use crate::db::DB;
 use crate::workload::Workload;
-use rand::distributions::Uniform;
 use rand::distributions::{Alphanumeric, DistString};
 use rand::rngs::SmallRng;
 use rand::SeedableRng;
@@ -27,6 +26,7 @@ impl std::fmt::Display for CoreOperation {
     }
 }
 
+#[allow(dead_code)]
 pub struct CoreWorkload {
     rng: SmallRng,
     table: String,
@@ -51,7 +51,7 @@ pub struct CoreWorkload {
 
 impl CoreWorkload {
     pub fn new(prop: &Properties) -> Self {
-        let mut rng = SmallRng::from_entropy();
+        let rng = SmallRng::from_entropy();
         let field_name_prefix = "field";
         let field_count = 10;
         let mut field_names = vec![];
@@ -125,10 +125,10 @@ fn fnvhash64(val: u64) -> u64 {
     let mut val = val;
     let prime = 0xcbf29ce484222325;
     let mut hashval = prime;
-    for i in 0..8 {
+    for _ in 0..8 {
         let octet = val & 0x00ff;
-        val = val >> 8;
-        hashval = hashval ^ octet;
+        val >>= 8;
+        hashval ^= octet;
         hashval = hashval.wrapping_mul(prime);
     }
     hashval

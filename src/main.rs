@@ -3,7 +3,7 @@ use crate::workload::Workload;
 use anyhow::{bail, Result};
 use properties::Properties;
 use std::fs;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use structopt::StructOpt;
 use workload::CoreWorkload;
 

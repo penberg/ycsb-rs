@@ -7,6 +7,7 @@ use std::collections::HashMap;
 
 const PRIMARY_KEY: &str = "y_id";
 
+#[derive(Default)]
 pub struct SQLite {
     conn: Option<Connection>,
 }
