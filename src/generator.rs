@@ -15,15 +15,15 @@ pub use zipfian_generator::ZipfianGenerator;
 
 use std::string::ToString;
 
-pub trait Generator<T: ToString + Clone> {
+pub trait Generator<T: ToString + Clone + Send> {
     fn next_value(&self, rng: &mut SmallRng) -> T;
 }
 
-pub trait NumberGenerator<T: ToString + Clone>: Generator<T> {
+pub trait NumberGenerator<T: ToString + Clone + Send>: Generator<T> {
     fn mean(&self) -> T;
 }
 
-pub struct GeneratorImpl<T: ToString + Clone, G: Generator<T>> {
+pub struct GeneratorImpl<T: ToString + Clone + Send, G: Generator<T>> {
     last_value: Option<T>,
     generator: G,
 }
@@ -31,7 +31,7 @@ pub struct GeneratorImpl<T: ToString + Clone, G: Generator<T>> {
 impl<T, G> GeneratorImpl<T, G>
 where
     G: Generator<T>,
-    T: ToString + Clone,
+    T: ToString + Clone + Send,
 {
     pub fn new(generator: G) -> Self {
         Self {

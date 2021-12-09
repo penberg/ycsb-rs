@@ -4,6 +4,7 @@ use rand::distributions::{Alphanumeric, DistString};
 use rand::rngs::SmallRng;
 use rand::SeedableRng;
 use std::collections::HashMap;
+use std::sync::Mutex;
 
 use crate::generator::{
     AcknowledgedCounterGenerator, ConstantGenerator, CounterGenerator, DiscreteGenerator,
@@ -28,19 +29,19 @@ impl std::fmt::Display for CoreOperation {
 
 #[allow(dead_code)]
 pub struct CoreWorkload {
-    rng: SmallRng,
+    rng: Mutex<SmallRng>,
     table: String,
     field_count: u64,
     field_names: Vec<String>,
-    field_length_generator: Box<dyn Generator<u64>>,
+    field_length_generator: Mutex<Box<dyn Generator<u64> + Send>>,
     read_all_fields: bool,
     write_all_fields: bool,
     data_integrity: bool,
-    key_sequence: Box<dyn Generator<u64>>,
-    operation_chooser: DiscreteGenerator<CoreOperation>,
-    key_chooser: Box<dyn Generator<u64>>,
+    key_sequence: Mutex<Box<dyn Generator<u64> + Send>>,
+    operation_chooser: Mutex<DiscreteGenerator<CoreOperation>>,
+    key_chooser: Mutex<Box<dyn Generator<u64> + Send>>,
     //field_chooser: Box<dyn Generator<String>>,
-    transaction_insert_key_sequence: AcknowledgedCounterGenerator,
+    transaction_insert_key_sequence: Mutex<AcknowledgedCounterGenerator>,
     //scan_length: Box<dyn Generator<u64>>,
     ordered_inserts: bool,
     record_count: usize,
@@ -59,19 +60,19 @@ impl CoreWorkload {
             field_names.push(format!("{}{}", field_name_prefix, i));
         }
         CoreWorkload {
-            rng,
+            rng: Mutex::new(rng),
             table: String::from("usertable"),
             field_count,
             field_names,
-            field_length_generator: get_field_length_generator(prop),
+            field_length_generator: Mutex::new(get_field_length_generator(prop)),
             read_all_fields: true,
             write_all_fields: true,
             data_integrity: true,
-            key_sequence: Box::new(CounterGenerator::new(prop.insert_start)),
-            operation_chooser: create_operation_generator(prop),
-            key_chooser: get_key_chooser_generator(prop),
+            key_sequence: Mutex::new(Box::new(CounterGenerator::new(prop.insert_start))),
+            operation_chooser: Mutex::new(create_operation_generator(prop)),
+            key_chooser: Mutex::new(get_key_chooser_generator(prop)),
             //field_chooser: Box<dyn Generator<String>>,
-            transaction_insert_key_sequence: AcknowledgedCounterGenerator::new(1),
+            transaction_insert_key_sequence: Mutex::new(AcknowledgedCounterGenerator::new(1)),
             //scan_length: Box<dyn Generator<u64>>,
             ordered_inserts: true,
             record_count: 1,
@@ -81,7 +82,7 @@ impl CoreWorkload {
         }
     }
 
-    fn do_transaction_read(&mut self, db: &impl DB) {
+    fn do_transaction_read(&self, db: &impl DB) {
         let keynum = self.next_key_num();
         let dbkey = format!("{}", fnvhash64(keynum));
         // TODO: fields
@@ -89,28 +90,44 @@ impl CoreWorkload {
         // TODO: verify rows
     }
 
-    fn next_key_num(&mut self) -> u64 {
+    fn next_key_num(&self) -> u64 {
         // FIXME: Handle case where keychooser is an ExponentialGenerator.
         // FIXME: Handle case where keynum is > transactioninsertkeysequence's last value
-        self.key_chooser.next_value(&mut self.rng)
+        self.key_chooser
+            .lock()
+            .unwrap()
+            .next_value(&mut self.rng.lock().unwrap())
     }
 }
 
 impl Workload for CoreWorkload {
-    fn do_insert(&mut self, db: &impl DB) {
-        let dbkey = self.key_sequence.next_value(&mut self.rng);
+    fn do_insert(&self, db: &impl DB) {
+        let dbkey = self
+            .key_sequence
+            .lock()
+            .unwrap()
+            .next_value(&mut self.rng.lock().unwrap());
         let dbkey = format!("{}", fnvhash64(dbkey));
         let mut values = HashMap::new();
         for field_name in &self.field_names {
-            let field_len = self.field_length_generator.next_value(&mut self.rng);
-            let s = Alphanumeric.sample_string(&mut self.rng, field_len as usize);
+            let field_len = self
+                .field_length_generator
+                .lock()
+                .unwrap()
+                .next_value(&mut self.rng.lock().unwrap());
+            let s = Alphanumeric
+                .sample_string::<SmallRng>(&mut self.rng.lock().unwrap(), field_len as usize);
             values.insert(&field_name[..], s);
         }
         db.insert(&self.table, &dbkey, &values).unwrap();
     }
 
-    fn do_transaction(&mut self, db: &impl DB) {
-        let op = self.operation_chooser.next_value(&mut self.rng);
+    fn do_transaction(&self, db: &impl DB) {
+        let op = self
+            .operation_chooser
+            .lock()
+            .unwrap()
+            .next_value(&mut self.rng.lock().unwrap());
         match op {
             CoreOperation::Read => {
                 self.do_transaction_read(db);
@@ -134,7 +151,7 @@ fn fnvhash64(val: u64) -> u64 {
     hashval
 }
 
-fn get_field_length_generator(prop: &Properties) -> Box<dyn Generator<u64>> {
+fn get_field_length_generator(prop: &Properties) -> Box<dyn Generator<u64> + Send> {
     match prop.field_length_distribution.to_lowercase().as_str() {
         "constant" => Box::new(ConstantGenerator::new(prop.field_length)),
         "uniform" => Box::new(UniformLongGenerator::new(1, prop.field_length)),
@@ -147,7 +164,7 @@ fn get_field_length_generator(prop: &Properties) -> Box<dyn Generator<u64>> {
     }
 }
 
-fn get_key_chooser_generator(prop: &Properties) -> Box<dyn Generator<u64>> {
+fn get_key_chooser_generator(prop: &Properties) -> Box<dyn Generator<u64> + Send> {
     let insert_count = if prop.insert_count > 1 {
         prop.insert_count
     } else {

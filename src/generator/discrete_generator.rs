@@ -1,12 +1,12 @@
 use super::Generator;
 use rand::prelude::*;
 
-pub struct WeightPair<T: Clone> {
+pub struct WeightPair<T: Clone + Send> {
     weight: f64,
     value: T,
 }
 
-impl<T: Clone> WeightPair<T> {
+impl<T: Clone + Send> WeightPair<T> {
     pub fn new(weight: f64, value: impl Into<T>) -> Self {
         Self {
             weight,
@@ -15,12 +15,12 @@ impl<T: Clone> WeightPair<T> {
     }
 }
 
-pub struct DiscreteGenerator<T: Clone> {
+pub struct DiscreteGenerator<T: Clone + Send> {
     values: Vec<WeightPair<T>>,
     sum: f64,
 }
 
-impl<T: ToString + Clone> DiscreteGenerator<T> {
+impl<T: ToString + Clone + Send> DiscreteGenerator<T> {
     pub fn new(values: Vec<WeightPair<T>>) -> Self {
         let mut sum = 0.0;
         for WeightPair { weight, .. } in &values {
@@ -30,7 +30,7 @@ impl<T: ToString + Clone> DiscreteGenerator<T> {
     }
 }
 
-impl<T: ToString + Clone> Generator<T> for DiscreteGenerator<T> {
+impl<T: ToString + Clone + Send> Generator<T> for DiscreteGenerator<T> {
     fn next_value(&self, rng: &mut SmallRng) -> T {
         let mut val = rng.gen::<f64>();
         for WeightPair { weight, value } in &self.values {
