@@ -10,7 +10,7 @@ pub trait DB {
 
 pub fn create_db(db: &str) -> Result<impl DB> {
     match db {
-        "sqlite" => Ok(SQLite::new()),
+        "sqlite" => Ok(SQLite::new()?),
         db => Err(anyhow!("{} is an invalid database name", db)),
     }
 }

@@ -13,8 +13,8 @@ pub struct SQLite {
 }
 
 impl SQLite {
-    pub fn new() -> Self {
-        SQLite { conn: None }
+    pub fn new() -> Result<Self> {
+        Ok(SQLite { conn: None })
     }
 }
 
