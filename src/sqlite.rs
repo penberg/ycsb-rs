@@ -7,22 +7,20 @@ use std::collections::HashMap;
 
 const PRIMARY_KEY: &str = "y_id";
 
-#[derive(Default)]
 pub struct SQLite {
-    conn: Option<Connection>,
+    conn: Connection,
 }
 
 impl SQLite {
     pub fn new() -> Result<Self> {
-        Ok(SQLite { conn: None })
+        let flags = OpenFlags::new().set_read_write().set_no_mutex();
+        let conn = Connection::open_with_flags("test.db", flags)?;
+        Ok(SQLite { conn })
     }
 }
 
 impl DB for SQLite {
     fn init(&mut self) -> Result<()> {
-        let flags = OpenFlags::new().set_read_write().set_no_mutex();
-        let conn = Connection::open_with_flags("test.db", flags)?;
-        self.conn = Some(conn);
         Ok(())
     }
 
@@ -39,7 +37,7 @@ impl DB for SQLite {
         }
         sql.values(&vals);
         let sql = sql.sql()?;
-        let mut stmt = self.conn.as_ref().unwrap().prepare(sql)?;
+        let mut stmt = self.conn.prepare(sql)?;
         let marker = format!(":{}", PRIMARY_KEY);
         stmt.bind_by_name(&marker, key)?;
         for (key, value) in values {
@@ -58,7 +56,7 @@ impl DB for SQLite {
         // TODO: fields
         sql.and_where(format!("{} = :{}", PRIMARY_KEY, PRIMARY_KEY));
         let sql = sql.sql()?;
-        let mut stmt = self.conn.as_ref().unwrap().prepare(sql)?;
+        let mut stmt = self.conn.prepare(sql)?;
         let marker = format!(":{}", PRIMARY_KEY);
         stmt.bind_by_name(&marker, key)?;
         let state = stmt.next()?;
