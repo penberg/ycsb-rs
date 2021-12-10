@@ -21,7 +21,7 @@ impl SQLite {
 }
 
 impl DB for SQLite {
-    fn init(&mut self) -> Result<()> {
+    fn init(&self) -> Result<()> {
         Ok(())
     }
 

@@ -3,6 +3,7 @@ use crate::workload::Workload;
 use anyhow::{bail, Result};
 use properties::Properties;
 use std::fs;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::thread;
 use std::time::Instant;
@@ -28,15 +29,15 @@ struct Opt {
     threads: usize,
 }
 
-fn load(wl: Arc<CoreWorkload>, db: &impl DB, operation_count: usize) {
+fn load(wl: Arc<CoreWorkload>, db: Rc<dyn DB>, operation_count: usize) {
     for _ in 0..operation_count {
-        wl.do_insert(db);
+        wl.do_insert(db.clone());
     }
 }
 
-fn run(wl: Arc<CoreWorkload>, db: &impl DB, operation_count: usize) {
+fn run(wl: Arc<CoreWorkload>, db: Rc<dyn DB>, operation_count: usize) {
     for _ in 0..operation_count {
-        wl.do_transaction(db);
+        wl.do_transaction(db.clone());
     }
 }
 
@@ -65,13 +66,13 @@ fn main() -> Result<()> {
             let wl = wl.clone();
             let cmd = cmd.clone();
             threads.push(thread::spawn(move || {
-                let mut db = db::create_db(&database).unwrap();
+                let db = db::create_db(&database).unwrap();
 
                 db.init().unwrap();
 
                 match &cmd[..] {
-                    "load" => load(wl.clone(), &db, thread_operation_count as usize),
-                    "run" => run(wl.clone(), &db, thread_operation_count as usize),
+                    "load" => load(wl.clone(), db, thread_operation_count as usize),
+                    "run" => run(wl.clone(), db, thread_operation_count as usize),
                     cmd => panic!("invalid command: {}", cmd),
                 };
             }));

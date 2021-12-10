@@ -4,6 +4,7 @@ use rand::distributions::{Alphanumeric, DistString};
 use rand::rngs::SmallRng;
 use rand::SeedableRng;
 use std::collections::HashMap;
+use std::rc::Rc;
 use std::sync::Mutex;
 
 use crate::generator::{
@@ -82,7 +83,7 @@ impl CoreWorkload {
         }
     }
 
-    fn do_transaction_read(&self, db: &impl DB) {
+    fn do_transaction_read(&self, db: Rc<dyn DB>) {
         let keynum = self.next_key_num();
         let dbkey = format!("{}", fnvhash64(keynum));
         let mut result = HashMap::new();
@@ -101,7 +102,7 @@ impl CoreWorkload {
 }
 
 impl Workload for CoreWorkload {
-    fn do_insert(&self, db: &impl DB) {
+    fn do_insert(&self, db: Rc<dyn DB>) {
         let dbkey = self
             .key_sequence
             .lock()
@@ -122,7 +123,7 @@ impl Workload for CoreWorkload {
         db.insert(&self.table, &dbkey, &values).unwrap();
     }
 
-    fn do_transaction(&self, db: &impl DB) {
+    fn do_transaction(&self, db: Rc<dyn DB>) {
         let op = self
             .operation_chooser
             .lock()
