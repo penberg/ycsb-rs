@@ -5,7 +5,7 @@ use std::collections::HashMap;
 pub trait DB {
     fn init(&mut self) -> Result<()>;
     fn insert(&self, table: &str, key: &str, values: &HashMap<&str, String>) -> Result<()>;
-    fn read(&self, table: &str, key: &str) -> Result<()>;
+    fn read(&self, table: &str, key: &str, result: &mut HashMap<String, String>) -> Result<()>;
 }
 
 pub fn create_db(db: &str) -> Result<impl DB> {

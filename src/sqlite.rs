@@ -50,7 +50,7 @@ impl DB for SQLite {
         Ok(())
     }
 
-    fn read(&self, table: &str, key: &str) -> Result<()> {
+    fn read(&self, table: &str, key: &str, result: &mut HashMap<String, String>) -> Result<()> {
         // TODO: cache prepared statement
         let mut sql = SqlBuilder::select_from(table);
         sql.field("*");
@@ -60,8 +60,13 @@ impl DB for SQLite {
         let mut stmt = self.conn.prepare(sql)?;
         let marker = format!(":{}", PRIMARY_KEY);
         stmt.bind_by_name(&marker, key)?;
-        let state = stmt.next()?;
-        assert!(state == State::Row);
+        while let State::Row = stmt.next().unwrap() {
+            for idx in 0..stmt.column_count() {
+                let key = stmt.column_name(idx);
+                let value = stmt.read::<String>(idx).unwrap();
+                result.insert(key.to_string(), value);
+            }
+        }
         // TODO: results
         Ok(())
     }

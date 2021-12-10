@@ -85,8 +85,8 @@ impl CoreWorkload {
     fn do_transaction_read(&self, db: &impl DB) {
         let keynum = self.next_key_num();
         let dbkey = format!("{}", fnvhash64(keynum));
-        // TODO: fields
-        db.read(&self.table, &dbkey).unwrap();
+        let mut result = HashMap::new();
+        db.read(&self.table, &dbkey, &mut result).unwrap();
         // TODO: verify rows
     }
 
