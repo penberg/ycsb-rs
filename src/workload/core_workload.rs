@@ -1,11 +1,11 @@
 use crate::db::DB;
 use crate::workload::Workload;
+use async_trait::async_trait;
 use rand::distributions::{Alphanumeric, DistString};
 use rand::rngs::SmallRng;
 use rand::SeedableRng;
 use std::collections::HashMap;
-use std::rc::Rc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use crate::generator::{
     AcknowledgedCounterGenerator, ConstantGenerator, CounterGenerator, DiscreteGenerator,
@@ -34,13 +34,13 @@ pub struct CoreWorkload {
     table: String,
     field_count: u64,
     field_names: Vec<String>,
-    field_length_generator: Mutex<Box<dyn Generator<u64> + Send>>,
+    field_length_generator: Mutex<Box<dyn Generator<u64> + Send + Sync>>,
     read_all_fields: bool,
     write_all_fields: bool,
     data_integrity: bool,
-    key_sequence: Mutex<Box<dyn Generator<u64> + Send>>,
+    key_sequence: Mutex<Box<dyn Generator<u64> + Send + Sync>>,
     operation_chooser: Mutex<DiscreteGenerator<CoreOperation>>,
-    key_chooser: Mutex<Box<dyn Generator<u64> + Send>>,
+    key_chooser: Mutex<Box<dyn Generator<u64> + Send + Sync>>,
     //field_chooser: Box<dyn Generator<String>>,
     transaction_insert_key_sequence: Mutex<AcknowledgedCounterGenerator>,
     //scan_length: Box<dyn Generator<u64>>,
@@ -83,11 +83,10 @@ impl CoreWorkload {
         }
     }
 
-    fn do_transaction_read(&self, db: Rc<dyn DB>) {
+    async fn do_transaction_read(&self, db: Arc<dyn DB + Send + Sync>) {
         let keynum = self.next_key_num();
         let dbkey = format!("{}", fnvhash64(keynum));
-        let mut result = HashMap::new();
-        db.read(&self.table, &dbkey, &mut result).unwrap();
+        let _ = db.read(self.table.clone(), dbkey).await.unwrap();
         // TODO: verify rows
     }
 
@@ -101,15 +100,16 @@ impl CoreWorkload {
     }
 }
 
+#[async_trait]
 impl Workload for CoreWorkload {
-    fn do_insert(&self, db: Rc<dyn DB>) {
+    async fn do_insert(&self, db: Arc<dyn DB + Send + Sync>) {
         let dbkey = self
             .key_sequence
             .lock()
             .unwrap()
             .next_value(&mut self.rng.lock().unwrap());
         let dbkey = format!("{}", fnvhash64(dbkey));
-        let mut values = HashMap::new();
+        let mut values: HashMap<String, String> = HashMap::new();
         for field_name in &self.field_names {
             let field_len = self
                 .field_length_generator
@@ -118,12 +118,12 @@ impl Workload for CoreWorkload {
                 .next_value(&mut self.rng.lock().unwrap());
             let s = Alphanumeric
                 .sample_string::<SmallRng>(&mut self.rng.lock().unwrap(), field_len as usize);
-            values.insert(&field_name[..], s);
+            values.insert(field_name.to_string(), s);
         }
-        db.insert(&self.table, &dbkey, &values).unwrap();
+        db.insert(self.table.clone(), dbkey, values).await.unwrap();
     }
 
-    fn do_transaction(&self, db: Rc<dyn DB>) {
+    async fn do_transaction(&self, db: Arc<dyn DB + Send + Sync>) {
         let op = self
             .operation_chooser
             .lock()
@@ -131,7 +131,7 @@ impl Workload for CoreWorkload {
             .next_value(&mut self.rng.lock().unwrap());
         match op {
             CoreOperation::Read => {
-                self.do_transaction_read(db);
+                self.do_transaction_read(db).await;
             }
             _ => todo!(),
         }
@@ -152,7 +152,7 @@ fn fnvhash64(val: u64) -> u64 {
     hashval
 }
 
-fn get_field_length_generator(prop: &Properties) -> Box<dyn Generator<u64> + Send> {
+fn get_field_length_generator(prop: &Properties) -> Box<dyn Generator<u64> + Send + Sync> {
     match prop.field_length_distribution.to_lowercase().as_str() {
         "constant" => Box::new(ConstantGenerator::new(prop.field_length)),
         "uniform" => Box::new(UniformLongGenerator::new(1, prop.field_length)),
@@ -165,7 +165,7 @@ fn get_field_length_generator(prop: &Properties) -> Box<dyn Generator<u64> + Sen
     }
 }
 
-fn get_key_chooser_generator(prop: &Properties) -> Box<dyn Generator<u64> + Send> {
+fn get_key_chooser_generator(prop: &Properties) -> Box<dyn Generator<u64> + Send + Sync> {
     let insert_count = if prop.insert_count > 1 {
         prop.insert_count
     } else {

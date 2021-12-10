@@ -1,11 +1,10 @@
 use crate::db::DB;
 use crate::workload::Workload;
 use anyhow::{bail, Result};
+use futures::future::join_all;
 use properties::Properties;
 use std::fs;
-use std::rc::Rc;
 use std::sync::Arc;
-use std::thread;
 use std::time::Instant;
 use structopt::StructOpt;
 use workload::CoreWorkload;
@@ -29,19 +28,20 @@ struct Opt {
     threads: usize,
 }
 
-fn load(wl: Arc<CoreWorkload>, db: Rc<dyn DB>, operation_count: usize) {
+async fn load(wl: Arc<CoreWorkload>, db: Arc<dyn DB + Send + Sync>, operation_count: usize) {
     for _ in 0..operation_count {
-        wl.do_insert(db.clone());
+        wl.do_insert(db.clone()).await;
     }
 }
 
-fn run(wl: Arc<CoreWorkload>, db: Rc<dyn DB>, operation_count: usize) {
+async fn run(wl: Arc<CoreWorkload>, db: Arc<dyn DB + Send + Sync>, operation_count: usize) {
     for _ in 0..operation_count {
-        wl.do_transaction(db.clone());
+        wl.do_transaction(db.clone()).await;
     }
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let opt = Opt::from_args();
 
     let raw_props = fs::read_to_string(&opt.workload)?;
@@ -65,21 +65,20 @@ fn main() -> Result<()> {
             let database = database.clone();
             let wl = wl.clone();
             let cmd = cmd.clone();
-            threads.push(thread::spawn(move || {
+            let task = tokio::task::spawn(async move {
+                let wl = wl.clone();
                 let db = db::create_db(&database).unwrap();
 
                 db.init().unwrap();
-
                 match &cmd[..] {
-                    "load" => load(wl.clone(), db, thread_operation_count as usize),
-                    "run" => run(wl.clone(), db, thread_operation_count as usize),
+                    "load" => load(wl.clone(), db, thread_operation_count as usize).await,
+                    "run" => run(wl.clone(), db, thread_operation_count as usize).await,
                     cmd => panic!("invalid command: {}", cmd),
                 };
-            }));
+            });
+            threads.push(task);
         }
-        for t in threads {
-            let _ = t.join();
-        }
+        join_all(threads).await;
         let runtime = start.elapsed().as_millis();
         println!("[OVERALL], ThreadCount, {}", opt.threads);
         println!("[OVERALL], RunTime(ms), {}", runtime);
