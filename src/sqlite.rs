@@ -1,14 +1,16 @@
 use crate::db::DB;
 
 use anyhow::Result;
+use async_trait::async_trait;
 use sql_builder::SqlBuilder;
 use sqlite::{Connection, OpenFlags, State};
 use std::collections::HashMap;
+use std::sync::Mutex;
 
 const PRIMARY_KEY: &str = "y_id";
 
 pub struct SQLite {
-    conn: Connection,
+    conn: Mutex<Connection>,
 }
 
 impl SQLite {
@@ -16,16 +18,24 @@ impl SQLite {
         let flags = OpenFlags::new().set_read_write().set_no_mutex();
         let mut conn = Connection::open_with_flags("test.db", flags)?;
         conn.set_busy_timeout(5000)?;
-        Ok(SQLite { conn })
+        Ok(SQLite {
+            conn: Mutex::new(conn),
+        })
     }
 }
 
+#[async_trait]
 impl DB for SQLite {
     fn init(&self) -> Result<()> {
         Ok(())
     }
 
-    fn insert(&self, table: &str, key: &str, values: &HashMap<&str, String>) -> Result<()> {
+    async fn insert(
+        &self,
+        table: String,
+        key: String,
+        values: HashMap<String, String>,
+    ) -> Result<()> {
         // TODO: cache prepared statement
         let mut sql = SqlBuilder::insert_into(table);
         let mut vals: Vec<String> = Vec::new();
@@ -38,9 +48,10 @@ impl DB for SQLite {
         }
         sql.values(&vals);
         let sql = sql.sql()?;
-        let mut stmt = self.conn.prepare(sql)?;
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(sql)?;
         let marker = format!(":{}", PRIMARY_KEY);
-        stmt.bind_by_name(&marker, key)?;
+        stmt.bind_by_name(&marker, &*key)?;
         for (key, value) in values {
             let marker = format!(":{}", key);
             stmt.bind_by_name(&marker, &value[..])?;
@@ -50,16 +61,18 @@ impl DB for SQLite {
         Ok(())
     }
 
-    fn read(&self, table: &str, key: &str, result: &mut HashMap<String, String>) -> Result<()> {
+    async fn read(&self, table: String, key: String) -> Result<HashMap<String, String>> {
         // TODO: cache prepared statement
         let mut sql = SqlBuilder::select_from(table);
         sql.field("*");
         // TODO: fields
         sql.and_where(format!("{} = :{}", PRIMARY_KEY, PRIMARY_KEY));
         let sql = sql.sql()?;
-        let mut stmt = self.conn.prepare(sql)?;
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(sql)?;
         let marker = format!(":{}", PRIMARY_KEY);
-        stmt.bind_by_name(&marker, key)?;
+        stmt.bind_by_name(&marker, &*key)?;
+        let mut result = HashMap::new();
         while let State::Row = stmt.next().unwrap() {
             for idx in 0..stmt.column_count() {
                 let key = stmt.column_name(idx);
@@ -67,7 +80,6 @@ impl DB for SQLite {
                 result.insert(key.to_string(), value);
             }
         }
-        // TODO: results
-        Ok(())
+        Ok(result)
     }
 }
