@@ -14,7 +14,8 @@ pub struct SQLite {
 impl SQLite {
     pub fn new() -> Result<Self> {
         let flags = OpenFlags::new().set_read_write().set_no_mutex();
-        let conn = Connection::open_with_flags("test.db", flags)?;
+        let mut conn = Connection::open_with_flags("test.db", flags)?;
+        conn.set_busy_timeout(5000)?;
         Ok(SQLite { conn })
     }
 }
