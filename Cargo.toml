@@ -6,11 +6,11 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
+itertools = "0.10"
 log = "0.4"
 rand = {version = "0.8", features = ["small_rng"]}
+rusqlite = "0.28"
 serde = { version = "1.0.130", features = ["derive"] }
-sql-builder = "3.1"
-sqlite = "0.26.0"
 structopt = "0.3.23"
 toml = "0.5.8"
 
