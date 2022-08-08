@@ -1,0 +1,13 @@
+[package]
+name = "ycsb"
+version = "0.0.0"
+authors = ["Pekka Enberg <penberg@chiselstrike.com>"]
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+log = "0.4"
+rand = {version = "0.8", features = ["small_rng"]}
+serde = { version = "1.0.130", features = ["derive"] }
+structopt = "0.3.23"
+toml = "0.5.8"
