@@ -9,6 +9,5 @@ edition = "2021"
 anyhow = "1.0"
 itertools = "0.10"
 rusqlite = "0.28"
-structopt = "0.3.23"
 toml = "0.5.8"
 ycsb = { "path" = "../../lib" }

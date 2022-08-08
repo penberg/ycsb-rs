@@ -82,7 +82,7 @@ impl CoreWorkload {
         }
     }
 
-    fn do_transaction_read<T: DB>(&self, db: T) {
+    fn do_transaction_read<T: DB>(&self, db: &T) {
         let keynum = self.next_key_num();
         let dbkey = format!("{}", fnvhash64(keynum));
         let mut result = HashMap::new();
@@ -101,7 +101,7 @@ impl CoreWorkload {
 }
 
 impl Workload for CoreWorkload {
-    fn do_insert<T: DB>(&self, db: T) {
+    fn do_insert<T: DB>(&self, db: &T) {
         let dbkey = self
             .key_sequence
             .lock()
@@ -122,7 +122,7 @@ impl Workload for CoreWorkload {
         db.insert(&self.table, &dbkey, &values).unwrap();
     }
 
-    fn do_transaction<T: DB>(&self, db: T) {
+    fn do_transaction<T: DB>(&self, db: &T) {
         let op = self
             .operation_chooser
             .lock()

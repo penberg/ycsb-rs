@@ -308,7 +308,6 @@ dependencies = [
  "anyhow",
  "itertools",
  "rusqlite",
- "structopt",
  "toml",
  "ycsb",
 ]
@@ -444,5 +443,6 @@ dependencies = [
  "log",
  "rand",
  "serde",
+ "structopt",
  "toml",
 ]
